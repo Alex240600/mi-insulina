@@ -1,0 +1,1344 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mi insulina</title>
+<meta name="description" content="Calcula la insulina rápida antes de comer con los números de tu pauta.">
+<meta property="og:title" content="Mi insulina">
+<meta property="og:description" content="Calcula la insulina rápida antes de comer con los números de tu pauta.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#edf2f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1419" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<style>
+@font-face{font-family:"Lexend";font-style:normal;font-weight:400;font-display:swap;src:url("lexend-400.woff2") format("woff2")}
+@font-face{font-family:"Lexend";font-style:normal;font-weight:700;font-display:swap;src:url("lexend-700.woff2") format("woff2")}
+
+/* Diseño: una columna estrecha, como una ficha de bolsillo. Cuatro preguntas en orden y el resultado dibujado como la ventanilla de dosis del bolígrafo. Lexend en todo: números claros, con el cero de siempre. */
+:root{
+  --papel:#edf2f5;
+  --ficha:#ffffff;
+  --hueco:#e4ecf1;
+  --tinta:#10222e;
+  --gris:#52697a;
+  --linea:#cfdae2;
+  --acento:#0f5f86;
+  --acento-tinta:#ffffff;
+  --acento-suave:#dbeaf3;
+  --ventana:#fbfaf4;
+  --ventana-tinta:#0f1519;
+  --baja:#b3261e;
+  --baja-suave:#fcebea;
+  --alta:#875600;
+  --alta-suave:#fff0d1;
+  --foco:#2b6fd6;
+  --velo:rgba(6,14,20,.5);
+  --sombra:0 1px 2px rgba(16,34,46,.06),0 6px 18px rgba(16,34,46,.07);
+  --f-titulo:"Lexend",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-texto:"Lexend",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --papel:#0b1419;--ficha:#132029;--hueco:#1a2a34;--tinta:#e3ecf1;--gris:#9bb0bd;--linea:#263844;
+    --acento:#5bbfe3;--acento-tinta:#04202c;--acento-suave:#11303e;
+    --ventana:#f1f0e8;--ventana-tinta:#0f1519;
+    --baja:#ff8a80;--baja-suave:#3a1512;--alta:#ffc35c;--alta-suave:#33270c;--foco:#8ab4ff;
+    --velo:rgba(0,0,0,.6);--sombra:none;color-scheme:dark;
+  }
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:var(--f-texto);font-size:18px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:20;background:var(--papel)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:disabled{opacity:.6;cursor:default}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--foco);outline-offset:2px}
+h1,h2,h3{text-wrap:balance}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* Barra superior */
+.barra{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;background:var(--papel);border-bottom:1px solid var(--linea)}
+.barra-in{max-width:540px;margin:0 auto;display:flex;align-items:center;gap:8px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.marca{flex:1;min-width:0;display:flex;align-items:center;gap:8px;margin:0;font-family:var(--f-titulo);font-weight:700;font-size:20px;letter-spacing:-.01em}
+.marca svg{flex:none;color:var(--acento)}
+.icono-btn{flex:none;width:48px;height:48px;padding:0;border:1px solid var(--linea);border-radius:12px;background:var(--ficha);color:var(--tinta);display:inline-grid;place-items:center}
+
+/* Página */
+.contenido{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding-block:18px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.vista,.grupo{display:flex;flex-direction:column;gap:14px}
+.grupo-filas{display:flex;flex-direction:column;gap:10px}
+.titulo-vista{margin:0;font-family:var(--f-titulo);font-weight:700;font-size:24px;line-height:1.2}
+.entradilla{margin:0}
+.ayuda{margin:0;color:var(--gris);font-size:16px}
+.cabecera-vista{display:flex;align-items:center;gap:12px}
+
+/* Instalar y enviar */
+.instalar,.enviar{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-radius:18px}
+.instalar{background:var(--acento-suave)}
+.enviar{border:1px solid var(--linea);background:var(--ficha)}
+.instalar p,.enviar p{margin:0;display:flex;flex-direction:column;gap:2px}
+.instalar b,.enviar b{font-size:18px}
+.instalar span,.enviar span{color:var(--gris);font-size:16px}
+
+/* Ficha con las cuatro preguntas */
+.ficha{background:var(--ficha);border:1px solid var(--linea);border-radius:18px;box-shadow:var(--sombra)}
+.paso{display:flex;flex-direction:column;gap:12px;padding:16px}
+.ficha>.paso:not([hidden])~.paso{border-top:1px solid var(--linea)}
+.pregunta{display:flex;gap:10px;align-items:flex-start;margin:0;font-size:19px;line-height:1.3;font-weight:700}
+.num{flex:none;width:30px;height:30px;margin-top:-2px;border-radius:50%;background:var(--acento-suave);color:var(--acento);display:grid;place-items:center;font-size:16px;font-weight:700}
+.rejilla{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opcion{min-height:56px;padding:8px 10px;border:2px solid var(--linea);border-radius:14px;background:var(--ficha);font-size:18px;font-weight:700}
+.opcion[aria-pressed="true"]{border-color:var(--acento);background:var(--acento-suave);color:var(--acento)}
+.campo-grande{display:flex;align-items:center;gap:12px}
+.entrada-grande{flex:1;width:100%;min-width:0;height:72px;padding:0 14px;border:2px solid var(--linea);border-radius:14px;background:var(--hueco);font-size:40px;font-weight:700;font-variant-numeric:tabular-nums}
+.entrada-grande::placeholder{color:var(--gris);opacity:.55}
+.entrada-grande:focus,.entrada:focus{outline:none;border-color:var(--acento)}
+.unidad{color:var(--gris);font-size:18px;white-space:nowrap}
+.centro{margin:-4px 0 0;text-align:center}
+.stepper{display:grid;grid-template-columns:64px minmax(0,1fr) 64px;gap:10px;align-items:center}
+.stepper .entrada-grande{text-align:center}
+.btn-paso{height:72px;padding:0;border:2px solid var(--linea);border-radius:14px;background:var(--ficha);color:var(--acento);font-size:36px;font-weight:700;line-height:1}
+.pista{margin:0;color:var(--acento);font-size:16px;font-weight:700}
+
+/* Botones */
+.boton{display:block;width:100%;min-height:60px;padding:12px 16px;border:2px solid transparent;border-radius:16px;font-size:20px;font-weight:700;text-align:center}
+.primario{background:var(--acento);color:var(--acento-tinta)}
+.secundario{background:transparent;border-color:var(--linea);color:var(--tinta)}
+.peligro{background:transparent;border-color:var(--baja);color:var(--baja)}
+.grande{min-height:68px;font-size:22px}
+.error{margin:0;color:var(--baja);font-weight:700}
+.error:empty{display:none}
+.pie{margin:0 8px;color:var(--gris);font-size:14px;text-align:center}
+
+/* Resultado: la ventanilla del bolígrafo */
+.boli{display:flex;flex-direction:column;gap:14px;padding:18px 18px 20px;border-radius:24px;background:var(--acento);color:var(--acento-tinta)}
+.boli-etiqueta{margin:0;font-family:var(--f-titulo);font-weight:700;font-size:22px}
+.boli-fila{display:flex;align-items:center;gap:16px}
+.ventanilla{position:relative;flex:none;min-width:150px;height:150px;padding:0 18px 0 32px;border-radius:16px;background:var(--ventana);color:var(--ventana-tinta);box-shadow:inset 0 3px 0 rgba(0,0,0,.12),inset 0 -2px 0 rgba(0,0,0,.06),0 0 0 4px rgba(255,255,255,.22);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tambor{display:flex;justify-content:center;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.tambor-centro{font-size:84px;letter-spacing:-.02em;padding-block:4px}
+.tambor-arriba,.tambor-abajo{height:20px;overflow:hidden;opacity:.3}
+.tambor-arriba{align-items:flex-end}
+.tambor-abajo{align-items:flex-start}
+.tambor i{font-style:normal;font-size:34px;line-height:1}
+.ventanilla.larga .tambor-centro{font-size:64px}
+.ventanilla.muy-larga .tambor-centro{font-size:50px}
+.puntero{position:absolute;left:9px;top:50%;width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:14px solid var(--ventana-tinta);transform:translateY(-50%)}
+.boli-ud{margin:0;min-width:0;display:flex;flex-direction:column;gap:2px}
+.boli-ud b{font-family:var(--f-titulo);font-size:26px;line-height:1.1}
+.boli-ud span{font-size:16px;opacity:.9}
+.boli-instruccion{margin:0;font-size:17px;font-weight:700}
+.boli.mini{gap:10px;padding:14px 16px 16px}
+.boli.mini .ventanilla{min-width:112px;height:112px;padding-left:28px}
+.boli.mini .tambor-centro{font-size:60px}
+.boli.mini .tambor i{font-size:26px}
+.boli.mini .tambor-arriba,.boli.mini .tambor-abajo{height:14px}
+
+.avisos{display:flex;flex-direction:column;gap:10px}
+.avisos:empty{display:none}
+.caja{display:flex;gap:10px;align-items:flex-start;padding:14px 16px;border-radius:14px;font-size:17px}
+.caja svg{flex:none;margin-top:2px}
+.caja.aviso{background:var(--alta-suave);color:var(--alta);font-weight:700}
+.caja.nota{background:var(--hueco);color:var(--tinta)}
+.cuenta{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid var(--linea);border-radius:18px;background:var(--ficha)}
+.cuenta h2{margin:0;color:var(--gris);font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.linea{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-bottom:1px dashed var(--linea);font-size:17px}
+.linea span{min-width:0}
+.linea b{white-space:nowrap;font-variant-numeric:tabular-nums}
+.linea s{margin-right:8px;color:var(--gris);font-weight:400}
+.linea.total{border-bottom:0;font-weight:700}
+
+.hipo{display:flex;flex-direction:column;gap:12px;padding:20px 18px;border:2px solid var(--baja);border-radius:22px;background:var(--baja-suave)}
+.hipo h2{margin:0;color:var(--baja);font-family:var(--f-titulo);font-size:26px;line-height:1.2}
+.hipo-dato{margin:0;font-size:20px;font-weight:700}
+.hipo-dato span{display:block}
+.hipo ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px}
+.hipo-112{margin:0;font-weight:700}
+
+/* Bienvenida */
+.chip{align-self:flex-start;padding:4px 10px;border-radius:999px;background:var(--hueco);color:var(--gris);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.ejemplo{margin:0;display:flex;flex-direction:column;gap:10px}
+.ejemplo figcaption{color:var(--gris);font-size:15px}
+.pasos-intro{margin:0;padding:8px 16px 8px 42px;background:var(--ficha);border:1px solid var(--linea);border-radius:18px}
+.pasos-intro li{padding:6px 0}
+
+/* Datos de la pauta */
+.aviso-ajustes{margin:0;padding:14px 16px;border-radius:14px;background:var(--alta-suave);color:var(--alta);font-size:16px;font-weight:700}
+.donde{margin:0;color:var(--gris);font-size:16px}
+fieldset{margin:0;min-width:0;padding:16px;border:1px solid var(--linea);border-radius:18px;background:var(--ficha);display:flex;flex-direction:column;gap:10px}
+fieldset.invalida{border:2px solid var(--baja)}
+legend{float:left;width:100%;margin:0;padding:0;font-size:19px;font-weight:700}
+fieldset .rejilla{grid-template-columns:1fr}
+.sub{margin:6px 0 0;font-weight:700}
+.radio-tarjeta{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:2px solid var(--linea);border-radius:14px;cursor:pointer}
+.radio-tarjeta:has(input:checked){border-color:var(--acento);background:var(--acento-suave)}
+.radio-tarjeta input{flex:none;width:22px;height:22px;margin:2px 0 0;accent-color:var(--acento)}
+.radio-tarjeta b{display:block}
+.radio-tarjeta small{display:block;margin-top:2px;color:var(--gris);font-size:15px}
+.check{display:flex;gap:10px;align-items:center;font-weight:700;cursor:pointer}
+.check input{flex:none;width:22px;height:22px;margin:0;accent-color:var(--acento)}
+.fila-campo{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:10px;border-top:1px solid var(--linea)}
+.fila-campo label{min-width:0;font-weight:700}
+.fila-campo small{display:block;color:var(--gris);font-size:15px;font-weight:400}
+.entrada{flex:none;width:112px;height:54px;padding:0 12px;border:2px solid var(--linea);border-radius:12px;background:var(--hueco);font-size:21px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.entrada.invalida,.fila-tabla.invalida{border-color:var(--baja)}
+.fila-tabla{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:2px solid var(--linea);border-radius:14px}
+.ft-linea{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.entrada.corta{width:84px;text-align:center}
+.signo{flex:none;width:52px;height:54px;padding:0;border:2px solid var(--acento);border-radius:12px;background:var(--acento-suave);color:var(--acento);font-size:26px;font-weight:700}
+.signo.resta{border-color:var(--alta);background:var(--alta-suave);color:var(--alta)}
+.quitar{margin-left:auto}
+.caja-errores{padding:12px 14px;border:2px solid var(--baja);border-radius:14px;background:var(--baja-suave)}
+.caja-errores b{color:var(--baja)}
+.caja-errores ul{margin:6px 0 0;padding-left:20px}
+
+/* Historial */
+.dia{margin:6px 4px -4px;color:var(--gris);font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.lista{padding:2px 16px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--linea)}
+.item:last-child{border-bottom:0}
+.item>div{min-width:0}
+.item-t{font-weight:700}
+.item-s{color:var(--gris);font-size:15px}
+.item-d{color:var(--acento);font-size:24px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* Confirmaciones y avisos flotantes */
+.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--velo)}
+.modal-caja{width:100%;max-width:480px;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:20px 18px 14px;border-radius:20px;background:var(--ficha);color:var(--tinta)}
+.modal-caja h2{margin:0;font-family:var(--f-titulo);font-size:21px}
+.modal-texto{display:flex;flex-direction:column;gap:6px}
+.modal-texto p{margin:0;font-size:17px}
+.modal-enlace{width:100%;height:50px;padding:0 12px;border:2px solid var(--linea);border-radius:12px;background:var(--hueco);font-size:15px}
+.toast{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;max-width:440px;margin:0 auto;padding:12px 18px;border-radius:16px;background:var(--tinta);color:var(--papel);font-weight:700;text-align:center;opacity:0;transform:translateY(12px);transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.visible{opacity:1;transform:none}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<noscript><p style="padding:16px">Para usar Mi insulina hay que activar JavaScript en el navegador.</p></noscript>
+<script>
+(function () {
+  'use strict';
+
+  /* ======================================================================
+     LÓGICA DEL CÁLCULO
+     Funciones puras: no tocan la pantalla. Así se pueden probar aparte.
+     ====================================================================== */
+  /* LOGICA-INICIO */
+  var Logica = (function () {
+    var COMIDAS = ['desayuno', 'comida', 'merienda', 'cena'];
+    var NOMBRE_COMIDA = { desayuno: 'Desayuno', comida: 'Comida', merienda: 'Merienda', cena: 'Cena' };
+
+    function esNum(n) { return typeof n === 'number' && isFinite(n); }
+    function entre(n, min, max) { return esNum(n) && n >= min && n <= max; }
+
+    // "1,5" o "1.5" -> 1.5. Vacío o con letras -> null.
+    function leerNumero(texto) {
+      if (texto === null || texto === undefined) return null;
+      var t = String(texto).replace(/\s+/g, '').replace(/−/g, '-').replace(',', '.');
+      if (!/^-?(\d+(\.\d*)?|\.\d+)$/.test(t)) return null;
+      var n = parseFloat(t);
+      return isFinite(n) ? n : null;
+    }
+
+    // Número con coma decimal, como se escribe en España.
+    function fmt(n, dec) {
+      if (!esNum(n)) return '';
+      var d = dec === undefined ? 1 : dec;
+      var f = Math.pow(10, d);
+      var v = Math.round(n * f) / f;
+      if (v === 0) v = 0;
+      return String(v).replace('.', ',');
+    }
+
+    // Unidades de insulina: "+1,4 U", "−0,5 U", "6 U".
+    function fmtU(v, conSigno) {
+      if (!esNum(v)) return '';
+      var r = Math.round(v * 10) / 10;
+      if (r === 0) return '0 U';
+      var s = r < 0 ? '−' : (conSigno ? '+' : '');
+      return s + fmt(Math.abs(r)) + ' U';
+    }
+
+    // Comida que toca según la hora del móvil (luego se puede cambiar a mano).
+    function comidaPorHora(fecha) {
+      var m = fecha.getHours() * 60 + fecha.getMinutes();
+      if (m >= 300 && m < 720) return 'desayuno';   // 5:00 a 11:59
+      if (m >= 720 && m < 1020) return 'comida';    // 12:00 a 16:59
+      if (m >= 1020 && m < 1200) return 'merienda'; // 17:00 a 19:59
+      return 'cena';                                // 20:00 a 4:59
+    }
+
+    // Redondea a lo que marca el bolígrafo (de 1 en 1 o de 0,5 en 0,5).
+    function redondear(valor, paso, modo) {
+      var x = valor / paso;
+      var k = modo === 'abajo' ? Math.floor(x + 1e-9) : Math.floor(x + 0.5 + 1e-9);
+      var r = k * paso;
+      return r <= 0 ? 0 : Math.round(r * 10) / 10;
+    }
+
+    function ratioDe(a, comida) { return a.mismoRatio ? a.ratio.todas : a.ratio[comida]; }
+
+    function filaTabla(tabla, g) {
+      var t = tabla || [];
+      for (var i = 0; i < t.length; i++) if (g >= t[i].desde && g <= t[i].hasta) return t[i];
+      return null;
+    }
+
+    // Comprueba que la pauta está completa y tiene sentido. Devuelve la lista de problemas.
+    function validarAjustes(a) {
+      var p = [];
+      function mal(campo, texto) { p.push({ campo: campo, texto: texto }); }
+      if (!a || typeof a !== 'object') { mal('pauta', 'Faltan los datos de la pauta.'); return p; }
+      if (a.pauta !== 'ratio' && a.pauta !== 'fija') mal('pauta', 'Elige cómo calcula la dosis.');
+      if (a.pauta === 'ratio') {
+        var rac = a.unidadHidratos === 'raciones', gr = a.unidadHidratos === 'gramos';
+        if (!rac && !gr) mal('unidadHidratos', 'Elige si cuenta los hidratos en raciones o en gramos.');
+        var r = a.ratio || {};
+        (a.mismoRatio ? ['todas'] : COMIDAS).forEach(function (c) {
+          var de = c === 'todas' ? '' : ' de ' + NOMBRE_COMIDA[c].toLowerCase();
+          if (gr) { if (!entre(r[c], 2, 100)) mal('ratio-' + c, 'Pon el ratio' + de + ': gramos que cubre 1 unidad (entre 2 y 100).'); }
+          else if (!entre(r[c], 0.1, 10)) mal('ratio-' + c, 'Pon el ratio' + de + ': unidades por ración (entre 0,1 y 10).');
+        });
+        if (!entre(a.sensibilidad, 5, 500)) mal('sensibilidad', 'Pon el factor de sensibilidad (entre 5 y 500 mg/dL).');
+        if (!entre(a.objetivo, 70, 200)) mal('objetivo', 'Pon el objetivo de glucosa (entre 70 y 200 mg/dL).');
+        else if (esNum(a.hipo) && a.objetivo <= a.hipo) mal('objetivo', 'El objetivo tiene que ser mayor que el aviso de bajada.');
+      }
+      if (a.pauta === 'fija') {
+        var d = a.dosisFija || {};
+        COMIDAS.forEach(function (c) {
+          if (!entre(d[c], 0, 100)) mal('fija-' + c, 'Pon la dosis de ' + NOMBRE_COMIDA[c].toLowerCase() + ' (0 si no se pincha).');
+        });
+        var t = Array.isArray(a.tabla) ? a.tabla : [];
+        t.forEach(function (f, i) {
+          var n = i + 1;
+          if (!f || typeof f !== 'object') { mal('tabla-' + i, 'Fila ' + n + ': falta rellenarla.'); return; }
+          if (!entre(f.desde, 20, 600) || !entre(f.hasta, 20, 600)) mal('tabla-' + i, 'Fila ' + n + ': las glucosas tienen que estar entre 20 y 600.');
+          else if (f.desde > f.hasta) mal('tabla-' + i, 'Fila ' + n + ': el primer número tiene que ser menor que el segundo.');
+          if (!entre(f.u, -20, 20)) mal('tabla-' + i, 'Fila ' + n + ': pon cuántas unidades se suman o se restan.');
+        });
+        var orden = t.map(function (f, i) { return { f: f, i: i }; })
+          .filter(function (x) { return x.f && esNum(x.f.desde) && esNum(x.f.hasta) && x.f.desde <= x.f.hasta; })
+          .sort(function (x, y) { return x.f.desde - y.f.desde; });
+        var maxH = -Infinity, iMax = -1;
+        orden.forEach(function (x) {
+          if (x.f.desde <= maxH) mal('tabla-' + x.i, 'Las filas ' + (iMax + 1) + ' y ' + (x.i + 1) + ' se pisan: una glucosa no puede estar en dos filas.');
+          if (x.f.hasta > maxH) { maxH = x.f.hasta; iMax = x.i; }
+        });
+      }
+      if (a.paso !== 1 && a.paso !== 0.5) mal('paso', 'Elige de cuánto en cuánto marca el bolígrafo.');
+      if (a.redondeo !== 'cercano' && a.redondeo !== 'abajo') mal('redondeo', 'Elige cómo redondear.');
+      if (!entre(a.horasActiva, 1, 8)) mal('horasActiva', 'Pon cuántas horas dura la insulina rápida (entre 1 y 8).');
+      if (!entre(a.hipo, 50, 100)) mal('hipo', 'El aviso de bajada tiene que estar entre 50 y 100 mg/dL.');
+      if (!entre(a.alta, 150, 400)) mal('alta', 'El aviso de glucosa alta tiene que estar entre 150 y 400 mg/dL.');
+      if (a.dosisMax !== null && a.dosisMax !== undefined && !entre(a.dosisMax, 1, 100)) mal('dosisMax', 'El aviso de dosis alta tiene que estar entre 1 y 100 unidades, o vacío.');
+      return p;
+    }
+
+    // El cálculo. a = la pauta; e = lo que ha escrito ahora.
+    function calcular(a, e) {
+      if (validarAjustes(a).length) return { estado: 'error', texto: 'Faltan datos de la pauta. Revisa los datos de la pauta.' };
+      if (!esNum(e.glucosa)) return { estado: 'error', texto: 'Escribe cuánta glucosa tienes ahora.' };
+      var g = Math.round(e.glucosa);
+      if (g < 20 || g > 600) return { estado: 'error', texto: 'Revisa la glucosa: tiene que estar entre 20 y 600 mg/dL.' };
+      if (g < a.hipo) return { estado: 'hipo', glucosa: g, umbral: a.hipo };
+      if (COMIDAS.indexOf(e.comida) < 0) return { estado: 'error', texto: 'Elige qué comida es.' };
+
+      var r = { estado: 'ok', glucosa: g, comida: e.comida, lineas: [], avisos: [], notas: [] };
+      var porComida, corr, textoCorr;
+      if (a.pauta === 'ratio') {
+        var rac = a.unidadHidratos === 'raciones';
+        var h = e.hidratos;
+        if (!esNum(h)) return { estado: 'error', texto: rac ? 'Escribe cuántas raciones vas a comer. Si ninguna, pon 0.' : 'Escribe cuántos gramos de hidratos vas a comer. Si ninguno, pon 0.' };
+        if (h < 0 || h > (rac ? 30 : 300)) return { estado: 'error', texto: rac ? 'Revisa las raciones: tienen que estar entre 0 y 30.' : 'Revisa los gramos: tienen que estar entre 0 y 300.' };
+        var q = ratioDe(a, e.comida);
+        porComida = rac ? h * q : h / q;
+        r.hidratos = h;
+        r.unidadHidratos = a.unidadHidratos;
+        r.lineas.push({
+          texto: rac ? 'Hidratos: ' + fmt(h) + (h === 1 ? ' ración' : ' raciones') + ' × ' + fmt(q, 2) + ' U'
+                     : 'Hidratos: ' + fmt(h) + ' g ÷ ' + fmt(q, 2) + ' g por unidad',
+          valor: porComida, conSigno: false
+        });
+        corr = (g - a.objetivo) / a.sensibilidad;
+        textoCorr = 'Corrección: (' + fmt(g, 0) + ' − ' + fmt(a.objetivo, 0) + ') ÷ ' + fmt(a.sensibilidad, 0);
+      } else {
+        porComida = a.dosisFija[e.comida];
+        r.lineas.push({ texto: 'Dosis fija de ' + NOMBRE_COMIDA[e.comida].toLowerCase(), valor: porComida, conSigno: false });
+        var f = filaTabla(a.tabla, g);
+        corr = f ? f.u : 0;
+        textoCorr = f ? 'Corrección (glucosa de ' + fmt(f.desde, 0) + ' a ' + fmt(f.hasta, 0) + ')' : 'Corrección (tu glucosa no está en la tabla)';
+      }
+      if (e.reciente !== true && e.reciente !== false) return { estado: 'error', texto: 'Contesta si te has pinchado insulina rápida en las últimas ' + fmt(a.horasActiva) + ' horas.' };
+
+      // Si hay insulina rápida reciente, no se suma corrección (para no acumular). Una corrección que resta sí se aplica.
+      var usada = corr, tachada = null;
+      if (e.reciente && corr > 0) {
+        usada = 0; tachada = corr;
+        r.notas.push('No se suma la corrección porque te pinchaste insulina rápida hace menos de ' + fmt(a.horasActiva) + ' horas y todavía está haciendo efecto.');
+      }
+      r.lineas.push({ texto: textoCorr, valor: usada, tachado: tachada, conSigno: true });
+
+      var exacto = porComida + usada;
+      if (exacto < 0) {
+        exacto = 0;
+        r.notas.push('La corrección resta más de lo que pide la comida, así que sale 0.');
+      }
+      r.exacto = exacto;
+      r.dosis = redondear(exacto, a.paso, a.redondeo);
+      if (g >= a.alta) r.avisos.push({ tipo: 'alta', texto: 'Glucosa alta (' + fmt(g, 0) + ' mg/dL). Si te lo han indicado, mira los cuerpos cetónicos. Si salen positivos o te encuentras mal, llama a tu equipo médico.' });
+      if (esNum(a.dosisMax) && r.dosis > a.dosisMax) r.avisos.push({ tipo: 'max', texto: 'Sale más de ' + fmt(a.dosisMax) + ' unidades, más de lo normal para ti. Revisa la glucosa y ' + (a.pauta === 'ratio' ? 'los hidratos' : 'la comida') + ' antes de pincharte.' });
+      return r;
+    }
+
+    // Resumen de la pauta en frases cortas.
+    function resumen(a) {
+      var l = [];
+      function lista(obj, sufijo) {
+        return COMIDAS.map(function (c) { return NOMBRE_COMIDA[c].toLowerCase() + ' ' + fmt(obj[c], 2) + sufijo; }).join(' · ');
+      }
+      if (a.pauta === 'ratio') {
+        var gr = a.unidadHidratos === 'gramos';
+        l.push(gr ? 'Cuenta los hidratos en gramos.' : 'Cuenta los hidratos en raciones (1 ración = 10 g).');
+        if (a.mismoRatio) l.push(gr ? 'Ratio: 1 U por cada ' + fmt(a.ratio.todas, 2) + ' g, en todas las comidas.' : 'Ratio: ' + fmt(a.ratio.todas, 2) + ' U por ración, en todas las comidas.');
+        else l.push(gr ? 'Gramos que cubre 1 U: ' + lista(a.ratio, ' g') + '.' : 'Unidades por ración: ' + lista(a.ratio, ' U') + '.');
+        l.push('Sensibilidad: 1 U baja ' + fmt(a.sensibilidad, 0) + ' mg/dL.');
+        l.push('Objetivo: ' + fmt(a.objetivo, 0) + ' mg/dL.');
+      } else {
+        l.push('Dosis fija: ' + lista(a.dosisFija, ' U') + '.');
+        var t = (a.tabla || []).slice().sort(function (x, y) { return x.desde - y.desde; });
+        l.push(t.length ? 'Corrección: ' + t.map(function (f) { return fmt(f.desde, 0) + '–' + fmt(f.hasta, 0) + ': ' + fmtU(f.u, true); }).join(' · ') + '.' : 'Corrección: sin tabla.');
+      }
+      l.push('Bolígrafo de ' + (a.paso === 0.5 ? '0,5 en 0,5' : '1 en 1') + ', redondeo ' + (a.redondeo === 'abajo' ? 'siempre hacia abajo' : 'al más cercano') + '.');
+      l.push('No suma corrección si se pinchó rápida hace menos de ' + fmt(a.horasActiva) + ' h.');
+      l.push('Avisos: bajada por debajo de ' + fmt(a.hipo, 0) + ' · alta desde ' + fmt(a.alta, 0) + (esNum(a.dosisMax) ? ' · dosis de más de ' + fmt(a.dosisMax) + ' U' : '') + '.');
+      return l;
+    }
+
+    // Deja solo los datos que usa el tipo de pauta elegido, y nada más.
+    function limpiarPauta(o) {
+      var c = { version: 1, pauta: o.pauta };
+      if (o.pauta === 'ratio') {
+        var r = o.ratio || {};
+        c.unidadHidratos = o.unidadHidratos;
+        c.mismoRatio = o.mismoRatio === true;
+        c.ratio = c.mismoRatio ? { todas: r.todas } : { desayuno: r.desayuno, comida: r.comida, merienda: r.merienda, cena: r.cena };
+        c.sensibilidad = o.sensibilidad;
+        c.objetivo = o.objetivo;
+      } else {
+        var d = o.dosisFija || {};
+        c.dosisFija = { desayuno: d.desayuno, comida: d.comida, merienda: d.merienda, cena: d.cena };
+        c.tabla = (Array.isArray(o.tabla) ? o.tabla : []).map(function (f) {
+          f = f || {};
+          return { desde: f.desde, hasta: f.hasta, u: f.u };
+        }).sort(function (x, y) { return x.desde - y.desde; });
+      }
+      c.paso = o.paso;
+      c.redondeo = o.redondeo;
+      c.horasActiva = o.horasActiva;
+      c.hipo = o.hipo;
+      c.alta = o.alta;
+      if (esNum(o.dosisMax)) c.dosisMax = o.dosisMax;
+      return c;
+    }
+
+    // La pauta dentro de un enlace: el texto va en base64, que se puede poner en una dirección web.
+    function codificarPauta(p) {
+      var json = JSON.stringify(limpiarPauta(p));
+      return btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    // Lee la pauta de un enlace. Si está dañada o no tiene sentido, devuelve null.
+    function decodificarPauta(texto) {
+      try {
+        if (typeof texto !== 'string' || !/^[A-Za-z0-9_-]+$/.test(texto)) return null;
+        var b64 = texto.replace(/-/g, '+').replace(/_/g, '/');
+        while (b64.length % 4) b64 += '=';
+        var obj = JSON.parse(decodeURIComponent(escape(atob(b64))));
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+        var p = limpiarPauta(obj);
+        return validarAjustes(p).length ? null : p;
+      } catch (e) { return null; }
+    }
+
+    return {
+      COMIDAS: COMIDAS, NOMBRE_COMIDA: NOMBRE_COMIDA, leerNumero: leerNumero, fmt: fmt, fmtU: fmtU,
+      comidaPorHora: comidaPorHora, redondear: redondear, validarAjustes: validarAjustes,
+      calcular: calcular, resumen: resumen, limpiarPauta: limpiarPauta,
+      codificarPauta: codificarPauta, decodificarPauta: decodificarPauta
+    };
+  })();
+  /* LOGICA-FIN */
+
+  var L = Logica;
+  var VERSION = '1.0';
+
+  /* ======================================================================
+     PANTALLAS
+     ====================================================================== */
+  var ICONO_ATRAS = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>';
+  var ICONO_AVISO = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
+  var ICONO_INFO = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>';
+  var ICONO_PAPELERA = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
+
+  function filaComida(prefijo, comida, nombre, unidad, clase) {
+    return '<div class="fila-campo"><label for="' + prefijo + comida + '">' + nombre + ' <small' + (clase ? ' class="' + clase + '"' : '') + '>' + unidad + '</small></label><input id="' + prefijo + comida + '" class="entrada" type="text" inputmode="decimal" autocomplete="off"></div>';
+  }
+  function filasComidas(prefijo, unidad, clase) {
+    return filaComida(prefijo, 'desayuno', 'Desayuno', unidad, clase) + filaComida(prefijo, 'comida', 'Comida', unidad, clase) +
+      filaComida(prefijo, 'merienda', 'Merienda', unidad, clase) + filaComida(prefijo, 'cena', 'Cena', unidad, clase);
+  }
+
+  var MARCADO = [
+    '<header class="barra"><div class="barra-in">',
+    '<p class="marca"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.6c3.4 4.2 6.4 7.9 6.4 11.4a6.4 6.4 0 0 1-12.8 0C5.6 10.5 8.6 6.8 12 2.6z"/></svg><span>Mi insulina</span></p>',
+    '<button type="button" class="icono-btn" id="btnHistorial" aria-label="Historial de dosis"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>',
+    '<button type="button" class="icono-btn" id="btnAjustes" aria-label="Datos de la pauta"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>',
+    '</div></header>',
+    '<main class="contenido">',
+
+    /* Aviso para instalarla (solo aparece si el móvil lo permite) */
+    '<div class="instalar" id="cajaInstalar" hidden><p><b>Instálala en el móvil</b><span>Tendrás un icono en la pantalla de inicio y funcionará también sin internet.</span></p>',
+    '<button type="button" class="boton primario" id="btnInstalar">Instalar</button></div>',
+
+    /* Bienvenida: todavía no hay pauta */
+    '<section class="vista" id="vistaBienvenida" hidden>',
+    '<h1 class="titulo-vista">Antes de empezar</h1>',
+    '<p class="entradilla">Esta calculadora te dice cuántas unidades de insulina rápida pincharte antes de comer, con los números de tu pauta.</p>',
+    '<figure class="ejemplo"><span class="chip">Ejemplo</span>',
+    '<div class="boli mini"><p class="boli-etiqueta">Pínchate</p><div class="boli-fila">',
+    '<div class="ventanilla"><span class="tambor tambor-arriba" aria-hidden="true"><i>4</i></span><span class="tambor tambor-centro">5</span><span class="tambor tambor-abajo" aria-hidden="true"><i>6</i></span><span class="puntero" aria-hidden="true"></span></div>',
+    '<p class="boli-ud"><b>unidades</b><span>de insulina rápida · Comida</span></p></div></div>',
+    '<figcaption>Así se ve el resultado. Debajo sale la cuenta paso a paso para poder comprobarla.</figcaption></figure>',
+    '<ol class="pasos-intro"><li>Eliges la comida.</li><li>Escribes tu glucosa.</li><li>Pones las raciones que vas a comer, si cuentas hidratos.</li><li>Dices si te has pinchado rápida hace poco.</li></ol>',
+    '<p class="entradilla"><b>Primero hay que poner los números de tu pauta.</b> Están en el informe del endocrino. Solo se hace una vez.</p>',
+    '<p class="ayuda">¿Te han mandado un enlace con los datos? Ábrelo desde WhatsApp y se ponen solos.</p>',
+    '<button type="button" class="boton primario" id="btnConfigurar">Poner los datos de la pauta</button>',
+    '</section>',
+
+    /* Calcular: las cuatro preguntas */
+    '<section class="vista" id="vistaCalcular" hidden>',
+    '<div class="ficha">',
+    '<div class="paso" id="pasoComida"><h2 class="pregunta"><span class="num">1</span><span>¿Qué comida es?</span></h2><div class="rejilla">',
+    '<button type="button" class="opcion" data-grupo="comida" data-valor="desayuno" aria-pressed="false">Desayuno</button>',
+    '<button type="button" class="opcion" data-grupo="comida" data-valor="comida" aria-pressed="false">Comida</button>',
+    '<button type="button" class="opcion" data-grupo="comida" data-valor="merienda" aria-pressed="false">Merienda</button>',
+    '<button type="button" class="opcion" data-grupo="comida" data-valor="cena" aria-pressed="false">Cena</button>',
+    '</div></div>',
+    '<div class="paso" id="pasoGlucosa"><h2 class="pregunta"><span class="num">2</span><label for="glucosa">¿Cuánta glucosa tienes ahora?</label></h2>',
+    '<div class="campo-grande"><input id="glucosa" class="entrada-grande" type="text" inputmode="numeric" autocomplete="off" enterkeyhint="next" placeholder="—" aria-describedby="udGlucosa"><span class="unidad" id="udGlucosa">mg/dL</span></div></div>',
+    '<div class="paso" id="pasoHidratos"><h2 class="pregunta"><span class="num">3</span><label for="hidratos" id="tituloHidratos">¿Cuántas raciones de hidratos vas a comer?</label></h2>',
+    '<div class="stepper"><button type="button" class="btn-paso" id="menos" aria-label="Menos">−</button>',
+    '<input id="hidratos" class="entrada-grande" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="0" aria-describedby="unidadHidratos ayudaHidratos">',
+    '<button type="button" class="btn-paso" id="mas" aria-label="Más">+</button></div>',
+    '<p class="unidad centro" id="unidadHidratos">raciones</p><p class="ayuda" id="ayudaHidratos"></p></div>',
+    '<div class="paso" id="pasoReciente"><h2 class="pregunta"><span class="num">4</span><span id="tituloReciente">¿Te has pinchado insulina rápida en las últimas horas?</span></h2>',
+    '<div class="rejilla"><button type="button" class="opcion" data-grupo="reciente" data-valor="si" aria-pressed="false">Sí</button><button type="button" class="opcion" data-grupo="reciente" data-valor="no" aria-pressed="false">No</button></div>',
+    '<p class="ayuda">Solo cuenta la rápida, la de las comidas. La lenta no.</p><p class="pista" id="pistaReciente" hidden></p></div>',
+    '</div>',
+    '<p class="error" id="errorCalc" role="alert"></p>',
+    '<button type="button" class="boton primario grande" id="btnCalcular">Calcular</button>',
+    '<p class="pie">Calcula con los números de tu pauta. Si algo no te cuadra, manda lo que diga tu equipo médico.</p>',
+    '</section>',
+
+    /* Resultado */
+    '<section class="vista" id="vistaResultado" hidden>',
+    '<div class="grupo" id="resOk">',
+    '<div class="boli" aria-live="polite"><p class="boli-etiqueta" id="resEtiqueta">Pínchate</p><div class="boli-fila">',
+    '<div class="ventanilla" id="ventanilla"><span class="tambor tambor-arriba" aria-hidden="true"><i id="resAntes"></i></span><span class="tambor tambor-centro" id="resNum"></span><span class="tambor tambor-abajo" aria-hidden="true"><i id="resDespues"></i></span><span class="puntero" aria-hidden="true"></span></div>',
+    '<p class="boli-ud"><b id="resUd">unidades</b><span id="resSub">de insulina rápida</span></p></div>',
+    '<p class="boli-instruccion" id="resInstruccion"></p></div>',
+    '<div class="avisos" id="resAvisos"></div>',
+    '<div class="cuenta"><h2>Cómo sale la cuenta</h2><div id="resLineas"></div><p class="ayuda" id="resRedondeo"></p></div>',
+    '<button type="button" class="boton primario" id="btnAnotar">Ya me he pinchado: anotarlo</button>',
+    '<button type="button" class="boton secundario" id="btnVolver">Volver</button>',
+    '</div>',
+    '<div class="grupo" id="resHipo" hidden><div class="hipo" role="alert">',
+    '<h2>Tienes una bajada</h2>',
+    '<p class="hipo-dato">Glucosa: <b id="hipoValor"></b> mg/dL. <span>Ahora no te pinches insulina.</span></p>',
+    '<ol><li>Toma 15 g de azúcar rápido: zumo, azúcar o pastillas de glucosa, como te haya dicho tu equipo médico.</li>',
+    '<li>Espera 15 minutos y vuelve a medirte. Si sigues por debajo de <span class="hipoUmbral"></span>, repite.</li>',
+    '<li>Cuando estés en <span class="hipoUmbral"></span> o más, vuelve a calcular la dosis.</li></ol>',
+    '<p class="hipo-112">Si no mejora o te encuentras mal, pide ayuda o llama al 112.</p>',
+    '</div><button type="button" class="boton secundario" id="btnVolverHipo">Volver</button></div>',
+    '</section>',
+
+    /* Datos de la pauta */
+    '<section class="vista" id="vistaAjustes" hidden>',
+    '<div class="cabecera-vista"><button type="button" class="icono-btn" data-cerrar aria-label="Volver">' + ICONO_ATRAS + '</button><h1 class="titulo-vista">Datos de la pauta</h1></div>',
+    '<div class="enviar" id="cajaEnviar" hidden><p><b>Pasar los datos a otro móvil</b><span>Crea un enlace con los números guardados para mandarlo por WhatsApp. Al abrirlo en el otro móvil, se guardan allí.</span></p>',
+    '<button type="button" class="boton secundario" id="btnEnviar">Enviar a otro móvil</button></div>',
+    '<p class="aviso-ajustes">Copia estos números del informe del endocrino o de la educadora de diabetes. La app no trae ninguno puesto: si uno está mal, todas las dosis saldrán mal.</p>',
+    '<p class="donde">Se guardan solo en este móvil. Después podrás mandarlos a otro móvil con un enlace.</p>',
+    '<fieldset id="fsPauta"><legend>¿Cómo calcula la dosis?</legend>',
+    '<label class="radio-tarjeta"><input type="radio" name="pauta" value="ratio" id="pauta-ratio"><span><b>Contando hidratos</b><small>Unidades por ración (ratio) y corrección con el factor de sensibilidad.</small></span></label>',
+    '<label class="radio-tarjeta"><input type="radio" name="pauta" value="fija" id="pauta-fija"><span><b>Dosis fija y tabla</b><small>Las mismas unidades en cada comida, más o menos según una tabla de glucosa.</small></span></label>',
+    '</fieldset>',
+    '<div class="grupo" id="ajRatio" hidden>',
+    '<fieldset id="fsHidratos"><legend>¿Cómo cuenta los hidratos?</legend><div class="rejilla">',
+    '<label class="radio-tarjeta"><input type="radio" name="unidadHidratos" value="raciones" id="uh-raciones"><span><b>En raciones</b><small>1 ración = 10&nbsp;g</small></span></label>',
+    '<label class="radio-tarjeta"><input type="radio" name="unidadHidratos" value="gramos" id="uh-gramos"><span><b>En gramos</b></span></label>',
+    '</div></fieldset>',
+    '<fieldset><legend>Ratio</legend>',
+    '<label class="check"><input type="checkbox" id="mismoRatio"> El mismo en todas las comidas</label>',
+    '<div class="fila-campo" id="ratioTodasFila"><label for="ratio-todas" id="ratioTodasTexto">Unidades por ración</label><input id="ratio-todas" class="entrada" type="text" inputmode="decimal" autocomplete="off"></div>',
+    '<div class="grupo-filas" id="ratioComidas">' + filasComidas('ratio-', 'unidades por ración', 'ud-ratio') + '</div>',
+    '<p class="ayuda" id="ayudaRatio"></p></fieldset>',
+    '<fieldset><legend>Corrección</legend>',
+    '<div class="fila-campo"><label for="sensibilidad">Factor de sensibilidad <small>mg/dL que le baja 1 unidad</small></label><input id="sensibilidad" class="entrada" type="text" inputmode="numeric" autocomplete="off"></div>',
+    '<div class="fila-campo"><label for="objetivo">Objetivo de glucosa <small>mg/dL</small></label><input id="objetivo" class="entrada" type="text" inputmode="numeric" autocomplete="off"></div>',
+    '<p class="ayuda">Si le dieron un rango (por ejemplo, de 80 a 130), pregunta qué número usar para calcular.</p></fieldset>',
+    '</div>',
+    '<div class="grupo" id="ajFija" hidden>',
+    '<fieldset><legend>Dosis de cada comida</legend>' + filasComidas('fija-', 'unidades', '') + '<p class="ayuda">Pon 0 en la comida en la que no se pincha.</p></fieldset>',
+    '<fieldset><legend>Tabla de corrección</legend><p class="ayuda">Copia cada fila de la pauta. El botón + o − elige si se suman o se restan unidades.</p>',
+    '<div class="grupo-filas" id="tablaFilas"></div><button type="button" class="boton secundario" id="anadirFila">Añadir fila</button></fieldset>',
+    '</div>',
+    '<fieldset id="fsBoli"><legend>Bolígrafo de insulina rápida</legend><p class="sub">¿De cuánto en cuánto marca?</p><div class="rejilla">',
+    '<label class="radio-tarjeta"><input type="radio" name="paso" value="1" id="paso-1"><span><b>De 1 en 1</b></span></label>',
+    '<label class="radio-tarjeta"><input type="radio" name="paso" value="0.5" id="paso-05"><span><b>De 0,5 en 0,5</b></span></label>',
+    '</div><p class="sub">Si la cuenta sale con decimales</p>',
+    '<label class="radio-tarjeta"><input type="radio" name="redondeo" value="cercano" id="red-cercano"><span><b>Redondear al más cercano</b><small>Con boli de 1 en 1: 5,4 → 5 y 5,6 → 6</small></span></label>',
+    '<label class="radio-tarjeta"><input type="radio" name="redondeo" value="abajo" id="red-abajo"><span><b>Redondear siempre hacia abajo</b><small>Con boli de 1 en 1: 5,4 → 5 y 5,6 → 5</small></span></label>',
+    '</fieldset>',
+    '<fieldset><legend>Insulina que todavía actúa</legend>',
+    '<div class="fila-campo"><label for="horasActiva">Horas que dura la rápida <small>horas</small></label><input id="horasActiva" class="entrada" type="text" inputmode="decimal" autocomplete="off"></div>',
+    '<p class="ayuda">Si se pinchó hace menos de estas horas, la app no suma corrección, para no acumular insulina. Suele estar entre 3 y 5 horas: pregunta el número al endocrino.</p></fieldset>',
+    '<fieldset><legend>Avisos de seguridad</legend>',
+    '<div class="fila-campo"><label for="hipo">Bajada si está por debajo de <small>mg/dL</small></label><input id="hipo" class="entrada" type="text" inputmode="numeric" autocomplete="off"></div>',
+    '<div class="fila-campo"><label for="alta">Glucosa alta desde <small>mg/dL</small></label><input id="alta" class="entrada" type="text" inputmode="numeric" autocomplete="off"></div>',
+    '<div class="fila-campo"><label for="dosisMax">Avisar si la dosis pasa de <small>unidades · opcional</small></label><input id="dosisMax" class="entrada" type="text" inputmode="decimal" autocomplete="off"></div>',
+    '<p class="ayuda">70 y 250 son los valores habituales. Cámbialos si su equipo médico le dio otros.</p></fieldset>',
+    '<div class="caja-errores" id="ajErrores" role="alert" hidden></div>',
+    '<button type="button" class="boton primario" id="ajGuardar">Guardar</button>',
+    '<button type="button" class="boton secundario" data-cerrar>Cancelar</button>',
+    '<p class="pie">Mi insulina · versión ' + VERSION + '</p>',
+    '</section>',
+
+    /* Historial */
+    '<section class="vista" id="vistaHistorial" hidden>',
+    '<div class="cabecera-vista"><button type="button" class="icono-btn" data-cerrar aria-label="Volver">' + ICONO_ATRAS + '</button><h1 class="titulo-vista">Historial</h1></div>',
+    '<p class="entradilla">Las dosis anotadas en este móvil. Puedes enseñárselas al endocrino.</p>',
+    '<div class="grupo" id="listaHistorial"></div>',
+    '<button type="button" class="boton peligro" id="btnBorrarHis">Borrar historial</button>',
+    '</section>',
+    '</main>',
+
+    '<div class="modal" id="modal" hidden><div class="modal-caja" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">',
+    '<h2 id="modalTitulo"></h2><div class="modal-texto" id="modalTexto"></div>',
+    '<input id="modalEnlace" class="modal-enlace" type="text" readonly hidden aria-label="Enlace con los datos">',
+    '<button type="button" class="boton primario" id="modalSi"></button><button type="button" class="boton secundario" id="modalNo">Cancelar</button>',
+    '</div></div>',
+    '<div class="toast" id="toast" role="status" aria-live="polite"></div>'
+  ].join('');
+
+  document.getElementById('app').innerHTML = MARCADO;
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------- Lo que se guarda en este móvil ---------- */
+  var CLAVE_PAUTA = 'miInsulina.pauta.v1';
+  var CLAVE_HIS = 'miInsulina.historial.v1';
+  var memoria = {};
+  function leer(clave) {
+    try {
+      var t = window.localStorage.getItem(clave);
+      if (t !== null) return JSON.parse(t);
+    } catch (e) { /* este navegador no deja leer */ }
+    return Object.prototype.hasOwnProperty.call(memoria, clave) ? memoria[clave] : null;
+  }
+  function guardar(clave, valor) {
+    memoria[clave] = valor;
+    try { window.localStorage.setItem(clave, JSON.stringify(valor)); return true; }
+    catch (e) { return false; }
+  }
+  // Pide al navegador que no borre estos datos aunque le falte espacio.
+  function pedirPersistencia() {
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {}
+  }
+
+  /* ---------- La pauta ---------- */
+  function valida(p) { return !!p && typeof p === 'object' && L.validarAjustes(p).length === 0; }
+  var pauta = leer(CLAVE_PAUTA);
+  var aj = null;
+  function recalcularActiva() { aj = valida(pauta) ? pauta : null; }
+  recalcularActiva();
+  function guardarPauta(p) {
+    var ok = guardar(CLAVE_PAUTA, p);
+    pauta = p;
+    recalcularActiva();
+    estado.reciente = null;
+    pedirPersistencia();
+    return ok;
+  }
+
+  /* ---------- Navegación entre pantallas ---------- */
+  var VISTAS = ['vistaBienvenida', 'vistaCalcular', 'vistaResultado', 'vistaAjustes', 'vistaHistorial'];
+  var vistaActual = null;
+  var enSubvista = false, ignorarPop = false;
+  function mostrar(id) {
+    VISTAS.forEach(function (v) { $(v).hidden = (v !== id); });
+    vistaActual = id;
+    pintarInstalar();
+    try { window.scrollTo(0, 0); } catch (e) {}
+  }
+  // Las pantallas de resultado, datos e historial añaden un paso al historial del navegador,
+  // para que el botón «atrás» del móvil vuelva a la calculadora en vez de cerrar la app.
+  function abrir(id) {
+    mostrar(id);
+    if (!enSubvista) { try { history.pushState({ miInsulina: 1 }, ''); enSubvista = true; } catch (e) {} }
+  }
+  function cerrar() {
+    irInicio();
+    if (enSubvista) {
+      enSubvista = false;
+      ignorarPop = true;
+      try { history.back(); } catch (e) { ignorarPop = false; }
+    }
+  }
+  window.addEventListener('popstate', function () {
+    if (ignorarPop) { ignorarPop = false; return; }
+    enSubvista = false;
+    cerrarModal(false);
+    irInicio();
+  });
+  function irInicio() {
+    if (aj) { prepararCalculo(); mostrar('vistaCalcular'); }
+    else mostrar('vistaBienvenida');
+  }
+
+  /* ---------- Instalar en el móvil ---------- */
+  var eventoInstalar = null;
+  function enModoApp() {
+    try { if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true; } catch (e) {}
+    return window.navigator.standalone === true;
+  }
+  function pintarInstalar() {
+    var caja = $('cajaInstalar');
+    if (!caja) return;
+    caja.hidden = !(eventoInstalar && !enModoApp() && (vistaActual === 'vistaCalcular' || vistaActual === 'vistaBienvenida'));
+  }
+  window.addEventListener('beforeinstallprompt', function (ev) {
+    ev.preventDefault();
+    eventoInstalar = ev;
+    pintarInstalar();
+  });
+  window.addEventListener('appinstalled', function () {
+    eventoInstalar = null;
+    pintarInstalar();
+    aviso('Instalada. Ya tienes el icono en la pantalla de inicio.');
+  });
+  $('btnInstalar').addEventListener('click', function () {
+    var ev = eventoInstalar;
+    if (!ev) return;
+    eventoInstalar = null;
+    pintarInstalar();
+    try { ev.prompt(); } catch (e) {}
+  });
+
+  /* ---------- Fechas y horas ---------- */
+  function dos(n) { return (n < 10 ? '0' : '') + n; }
+  function hora(t) { var d = new Date(t); return dos(d.getHours()) + ':' + dos(d.getMinutes()); }
+  function hace(t) {
+    var min = Math.max(0, Math.round((Date.now() - t) / 60000));
+    if (min < 60) return 'hace ' + min + ' min';
+    var h = Math.floor(min / 60), m = min % 60;
+    return 'hace ' + h + ' h' + (m ? ' ' + m + ' min' : '');
+  }
+  function dia(t) {
+    var d = new Date(t), hoy = new Date(), ayer = new Date();
+    ayer.setDate(hoy.getDate() - 1);
+    function mismo(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+    if (mismo(d, hoy)) return 'Hoy';
+    if (mismo(d, ayer)) return 'Ayer';
+    var dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    return dias[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1);
+  }
+
+  /* ---------- Historial ---------- */
+  function historial() { var h = leer(CLAVE_HIS); return Array.isArray(h) ? h : []; }
+  function ultimaReciente() {
+    var h = historial();
+    if (!h.length || !aj) return null;
+    var u = h[0];
+    if (!u || typeof u.t !== 'number') return null;
+    var horas = (Date.now() - u.t) / 3600000;
+    return (horas >= 0 && horas < aj.horasActiva) ? u : null;
+  }
+
+  /* ---------- Pantalla de cálculo ---------- */
+  var estado = { comida: null, reciente: null };
+  var ultimo = null;
+  function marcarGrupo(grupo, valor) {
+    var bs = document.querySelectorAll('[data-grupo="' + grupo + '"]');
+    for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-valor') === valor ? 'true' : 'false');
+  }
+  function errorCalc(t) { $('errorCalc').textContent = t; }
+
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-grupo]') : null;
+    if (b) {
+      var g = b.getAttribute('data-grupo'), v = b.getAttribute('data-valor');
+      if (g === 'comida') estado.comida = v;
+      if (g === 'reciente') estado.reciente = (v === 'si');
+      marcarGrupo(g, v);
+      errorCalc('');
+      return;
+    }
+    if (ev.target.closest && ev.target.closest('[data-cerrar]')) cerrar();
+  });
+
+  function prepararCalculo() {
+    var ratio = aj.pauta === 'ratio';
+    $('pasoComida').hidden = ratio && aj.mismoRatio === true;
+    $('pasoHidratos').hidden = !ratio;
+    if (!estado.comida) estado.comida = L.comidaPorHora(new Date());
+    marcarGrupo('comida', estado.comida);
+    if (ratio) {
+      var rac = aj.unidadHidratos === 'raciones';
+      $('tituloHidratos').textContent = rac ? '¿Cuántas raciones de hidratos vas a comer?' : '¿Cuántos gramos de hidratos vas a comer?';
+      $('unidadHidratos').textContent = rac ? 'raciones' : 'gramos';
+      $('ayudaHidratos').textContent = rac ? '1 ración = 10 g de hidratos. Si no vas a comer hidratos, pon 0.' : 'Si no vas a comer hidratos, pon 0.';
+      $('menos').setAttribute('aria-label', rac ? 'Media ración menos' : '5 gramos menos');
+      $('mas').setAttribute('aria-label', rac ? 'Media ración más' : '5 gramos más');
+    }
+    $('tituloReciente').textContent = '¿Te has pinchado insulina rápida en las últimas ' + L.fmt(aj.horasActiva) + ' horas?';
+    var n = 1;
+    ['pasoComida', 'pasoGlucosa', 'pasoHidratos', 'pasoReciente'].forEach(function (id) {
+      if (!$(id).hidden) $(id).querySelector('.num').textContent = String(n++);
+    });
+    var u = ultimaReciente();
+    if (u) {
+      estado.reciente = true;
+      $('pistaReciente').textContent = 'Anotaste ' + L.fmt(u.dosis) + ' U a las ' + hora(u.t) + ' (' + hace(u.t) + ').';
+      $('pistaReciente').hidden = false;
+    } else {
+      $('pistaReciente').hidden = true;
+    }
+    marcarGrupo('reciente', estado.reciente === null ? '' : (estado.reciente ? 'si' : 'no'));
+  }
+
+  function cambiarHidratos(dir) {
+    var p = aj.unidadHidratos === 'raciones' ? 0.5 : 5;
+    var v = L.leerNumero($('hidratos').value);
+    if (v === null || v < 0) v = 0;
+    v = Math.round((v + dir * p) / p) * p;
+    if (v < 0) v = 0;
+    $('hidratos').value = L.fmt(v);
+    errorCalc('');
+  }
+  $('menos').addEventListener('click', function () { cambiarHidratos(-1); });
+  $('mas').addEventListener('click', function () { cambiarHidratos(1); });
+  $('glucosa').addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    if (!$('pasoHidratos').hidden) $('hidratos').focus(); else ev.target.blur();
+  });
+  $('hidratos').addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); ev.target.blur(); }
+  });
+  $('glucosa').addEventListener('input', function () { errorCalc(''); });
+  $('hidratos').addEventListener('input', function () { errorCalc(''); });
+
+  function leerCampo(id) {
+    var raw = $(id).value.trim();
+    return raw === '' ? { vacio: true, n: null } : { vacio: false, n: L.leerNumero(raw) };
+  }
+
+  $('btnCalcular').addEventListener('click', function () {
+    if (!aj) { irInicio(); return; }
+    var g = leerCampo('glucosa');
+    if (!g.vacio && g.n === null) { errorCalc('Escribe la glucosa solo con números.'); return; }
+    var ratio = aj.pauta === 'ratio';
+    var h = ratio ? leerCampo('hidratos') : { vacio: false, n: 0 };
+    if (ratio && !h.vacio && h.n === null) { errorCalc('Escribe ' + (aj.unidadHidratos === 'raciones' ? 'las raciones' : 'los gramos') + ' solo con números.'); return; }
+    var r = L.calcular(aj, { comida: estado.comida, glucosa: g.n, hidratos: h.n, reciente: estado.reciente });
+    if (r.estado === 'error') { errorCalc(r.texto); return; }
+    errorCalc('');
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    ultimo = r;
+    pintarResultado(r);
+    abrir('vistaResultado');
+  });
+
+  /* ---------- Resultado ---------- */
+  function caja(tipo, texto) {
+    var d = document.createElement('div');
+    d.className = 'caja ' + tipo;
+    d.innerHTML = tipo === 'aviso' ? ICONO_AVISO : ICONO_INFO;
+    var s = document.createElement('span');
+    s.textContent = texto;
+    d.appendChild(s);
+    return d;
+  }
+  function linea(texto, valor, tachado, conSigno, total) {
+    var d = document.createElement('div');
+    d.className = 'linea' + (total ? ' total' : '');
+    var a = document.createElement('span');
+    a.textContent = texto;
+    var b = document.createElement('b');
+    if (tachado !== null && tachado !== undefined) {
+      var s = document.createElement('s');
+      s.textContent = L.fmtU(tachado, true);
+      b.appendChild(s);
+    }
+    b.appendChild(document.createTextNode(L.fmtU(valor, conSigno)));
+    d.appendChild(a);
+    d.appendChild(b);
+    return d;
+  }
+  function textoRedondeo(r) {
+    var p = aj.paso === 0.5 ? 'de 0,5 en 0,5' : 'de 1 en 1';
+    if (L.fmt(r.exacto) === L.fmt(r.dosis)) return 'Tu bolígrafo marca ' + p + '. No hace falta redondear.';
+    return 'Tu bolígrafo marca ' + p + ': ' + L.fmt(r.exacto) + ' U se redondea ' + (aj.redondeo === 'abajo' ? 'hacia abajo ' : '') + 'a ' + L.fmt(r.dosis) + ' U.';
+  }
+  function pintarResultado(r) {
+    var hipo = r.estado === 'hipo';
+    $('resHipo').hidden = !hipo;
+    $('resOk').hidden = hipo;
+    if (hipo) {
+      $('hipoValor').textContent = L.fmt(r.glucosa, 0);
+      var us = document.querySelectorAll('.hipoUmbral');
+      for (var i = 0; i < us.length; i++) us[i].textContent = L.fmt(r.umbral, 0);
+      return;
+    }
+    var d = r.dosis, paso = aj.paso, txt = L.fmt(d);
+    $('resEtiqueta').textContent = d === 0 ? 'No hace falta pincharte' : 'Pínchate';
+    $('resNum').textContent = txt;
+    $('resAntes').textContent = d - paso >= 0 ? L.fmt(d - paso) : '';
+    $('resDespues').textContent = L.fmt(d + paso);
+    $('ventanilla').classList.toggle('larga', txt.length === 3);
+    $('ventanilla').classList.toggle('muy-larga', txt.length >= 4);
+    $('resUd').textContent = d === 1 ? 'unidad' : 'unidades';
+    $('resSub').textContent = 'de insulina rápida · ' + L.NOMBRE_COMIDA[r.comida];
+    $('resInstruccion').textContent = d === 0 ? 'Para esta comida no hace falta insulina rápida.'
+      : (paso === 1 ? 'Gira el bolígrafo hasta que veas el ' + txt + ' en la ventanilla.' : 'Marca ' + txt + ' unidades en el bolígrafo.');
+    var av = $('resAvisos');
+    av.textContent = '';
+    r.avisos.forEach(function (a) { av.appendChild(caja('aviso', a.texto)); });
+    r.notas.forEach(function (t) { av.appendChild(caja('nota', t)); });
+    var c = $('resLineas');
+    c.textContent = '';
+    r.lineas.forEach(function (l) { c.appendChild(linea(l.texto, l.valor, l.tachado, l.conSigno, false)); });
+    c.appendChild(linea('Total exacto', r.exacto, null, false, true));
+    $('resRedondeo').textContent = textoRedondeo(r);
+    $('btnAnotar').hidden = d === 0;
+  }
+  function limpiarCalculo() {
+    $('glucosa').value = '';
+    $('hidratos').value = '';
+    estado.comida = null;
+    estado.reciente = null;
+    ultimo = null;
+  }
+  $('btnAnotar').addEventListener('click', function () {
+    if (!ultimo || ultimo.estado !== 'ok') return;
+    var h = historial();
+    h.unshift({ t: Date.now(), comida: ultimo.comida, glucosa: ultimo.glucosa, hidratos: ultimo.hidratos, unidadHidratos: ultimo.unidadHidratos, dosis: ultimo.dosis });
+    if (h.length > 300) h.length = 300;
+    var ok = guardar(CLAVE_HIS, h);
+    limpiarCalculo();
+    cerrar();
+    aviso(ok ? 'Anotado' : 'Anotado, pero este navegador lo borrará al cerrar.');
+  });
+  $('btnVolver').addEventListener('click', cerrar);
+  $('btnVolverHipo').addEventListener('click', cerrar);
+
+  /* ---------- Historial ---------- */
+  function pintarHistorial() {
+    var h = historial(), cont = $('listaHistorial');
+    cont.textContent = '';
+    $('btnBorrarHis').hidden = !h.length;
+    if (!h.length) {
+      var p = document.createElement('p');
+      p.className = 'ayuda';
+      p.textContent = 'Todavía no hay nada anotado. Después de calcular, pulsa «Ya me he pinchado» y quedará aquí.';
+      cont.appendChild(p);
+      return;
+    }
+    var diaPrevio = null, grupo = null;
+    h.slice(0, 100).forEach(function (x) {
+      var d = dia(x.t);
+      if (d !== diaPrevio) {
+        var t = document.createElement('h2');
+        t.className = 'dia';
+        t.textContent = d;
+        cont.appendChild(t);
+        grupo = document.createElement('div');
+        grupo.className = 'ficha lista';
+        cont.appendChild(grupo);
+        diaPrevio = d;
+      }
+      var it = document.createElement('div');
+      it.className = 'item';
+      var izq = document.createElement('div');
+      var l1 = document.createElement('div');
+      l1.className = 'item-t';
+      l1.textContent = hora(x.t) + ' · ' + (L.NOMBRE_COMIDA[x.comida] || '');
+      var l2 = document.createElement('div');
+      l2.className = 'item-s';
+      var partes = ['Glucosa ' + L.fmt(x.glucosa, 0)];
+      if (typeof x.hidratos === 'number') partes.push(L.fmt(x.hidratos) + (x.unidadHidratos === 'gramos' ? ' g' : ' rac.'));
+      l2.textContent = partes.join(' · ');
+      izq.appendChild(l1);
+      izq.appendChild(l2);
+      var der = document.createElement('div');
+      der.className = 'item-d';
+      der.textContent = L.fmt(x.dosis) + ' U';
+      it.appendChild(izq);
+      it.appendChild(der);
+      grupo.appendChild(it);
+    });
+  }
+  $('btnHistorial').addEventListener('click', function () { pintarHistorial(); abrir('vistaHistorial'); });
+  $('btnBorrarHis').addEventListener('click', function () {
+    confirmar('¿Borrar el historial?', ['Se borran todas las dosis anotadas en este móvil. No se puede deshacer.'], 'Sí, borrar', function () {
+      guardar(CLAVE_HIS, []);
+      pintarHistorial();
+      aviso('Historial borrado');
+    });
+  });
+
+  /* ---------- Datos de la pauta ---------- */
+  var filas = [];
+  function abrirAjustes() {
+    cargarFormulario(valida(pauta) ? pauta : { hipo: 70, alta: 250, redondeo: 'cercano', mismoRatio: false, tabla: [] });
+    $('cajaEnviar').hidden = !valida(pauta);
+    abrir('vistaAjustes');
+  }
+  function ponRadio(nombre, valor) {
+    var rs = document.querySelectorAll('input[name="' + nombre + '"]');
+    for (var i = 0; i < rs.length; i++) rs[i].checked = valor !== null && valor !== undefined && rs[i].value === String(valor);
+  }
+  function valorRadio(nombre) {
+    var r = document.querySelector('input[name="' + nombre + '"]:checked');
+    return r ? r.value : null;
+  }
+  function ponNum(id, v) { $(id).value = (typeof v === 'number' && isFinite(v)) ? L.fmt(v, 2) : ''; }
+  function cargarFormulario(a) {
+    ponRadio('pauta', a.pauta);
+    ponRadio('unidadHidratos', a.unidadHidratos);
+    $('mismoRatio').checked = a.mismoRatio === true;
+    var r = a.ratio || {}, d = a.dosisFija || {};
+    ponNum('ratio-todas', r.todas);
+    L.COMIDAS.forEach(function (c) { ponNum('ratio-' + c, r[c]); ponNum('fija-' + c, d[c]); });
+    ponNum('sensibilidad', a.sensibilidad);
+    ponNum('objetivo', a.objetivo);
+    ponRadio('paso', a.paso);
+    ponRadio('redondeo', a.redondeo || 'cercano');
+    ponNum('horasActiva', a.horasActiva);
+    ponNum('hipo', a.hipo);
+    ponNum('alta', a.alta);
+    ponNum('dosisMax', a.dosisMax);
+    filas = (Array.isArray(a.tabla) ? a.tabla : []).map(function (f) {
+      return { desde: L.fmt(f.desde, 0), hasta: L.fmt(f.hasta, 0), u: L.fmt(Math.abs(f.u), 2), signo: f.u < 0 ? -1 : 1 };
+    });
+    pintarFilas();
+    actualizarFormulario();
+    limpiarMarcas();
+    $('ajErrores').hidden = true;
+  }
+  function actualizarFormulario() {
+    var p = valorRadio('pauta');
+    $('ajRatio').hidden = p !== 'ratio';
+    $('ajFija').hidden = p !== 'fija';
+    var gr = valorRadio('unidadHidratos') === 'gramos';
+    var mismo = $('mismoRatio').checked;
+    $('ratioTodasFila').hidden = !mismo;
+    $('ratioComidas').hidden = mismo;
+    $('ratioTodasTexto').textContent = gr ? 'Gramos que cubre 1 unidad' : 'Unidades por ración';
+    var uds = document.querySelectorAll('.ud-ratio');
+    for (var i = 0; i < uds.length; i++) uds[i].textContent = gr ? 'gramos que cubre 1 unidad' : 'unidades por ración';
+    $('ayudaRatio').textContent = gr
+      ? 'Si le dijeron «1 unidad por cada 12 g», escribe 12.'
+      : 'Si le dijeron «1,5 unidades por ración», escribe 1,5.' + (mismo ? '' : ' Si para la merienda no le dieron ratio, pregúntalo.');
+  }
+  $('vistaAjustes').addEventListener('change', actualizarFormulario);
+  $('vistaAjustes').addEventListener('input', function (ev) {
+    if (ev.target.classList) ev.target.classList.remove('invalida');
+    var fila = ev.target.closest ? ev.target.closest('.fila-tabla') : null;
+    if (fila) fila.classList.remove('invalida');
+  });
+
+  function pintarFilas() {
+    var cont = $('tablaFilas');
+    cont.textContent = '';
+    if (!filas.length) {
+      var p = document.createElement('p');
+      p.className = 'ayuda';
+      p.textContent = 'Sin filas: la glucosa no suma ni resta nada.';
+      cont.appendChild(p);
+    }
+    filas.forEach(function (f, i) {
+      var d = document.createElement('div');
+      d.className = 'fila-tabla';
+      d.setAttribute('data-i', String(i));
+      d.innerHTML =
+        '<div class="ft-linea">De <input class="entrada corta" data-k="desde" type="text" inputmode="numeric" autocomplete="off" aria-label="Fila ' + (i + 1) + ': desde (mg/dL)"> a <input class="entrada corta" data-k="hasta" type="text" inputmode="numeric" autocomplete="off" aria-label="Fila ' + (i + 1) + ': hasta (mg/dL)"> mg/dL</div>' +
+        '<div class="ft-linea"><button type="button" class="signo" data-k="signo"></button><input class="entrada corta" data-k="u" type="text" inputmode="decimal" autocomplete="off" aria-label="Fila ' + (i + 1) + ': unidades"> unidades' +
+        '<button type="button" class="icono-btn quitar" data-k="quitar" aria-label="Quitar la fila ' + (i + 1) + '">' + ICONO_PAPELERA + '</button></div>';
+      d.querySelector('[data-k="desde"]').value = f.desde;
+      d.querySelector('[data-k="hasta"]').value = f.hasta;
+      d.querySelector('[data-k="u"]').value = f.u;
+      pintarSigno(d.querySelector('[data-k="signo"]'), f.signo);
+      cont.appendChild(d);
+    });
+  }
+  function pintarSigno(b, signo) {
+    b.textContent = signo < 0 ? '−' : '+';
+    b.classList.toggle('resta', signo < 0);
+    b.setAttribute('aria-label', signo < 0 ? 'Restar unidades. Pulsa para sumar.' : 'Sumar unidades. Pulsa para restar.');
+  }
+  $('tablaFilas').addEventListener('input', function (ev) {
+    var fila = ev.target.closest('.fila-tabla');
+    if (!fila) return;
+    var i = Number(fila.getAttribute('data-i')), k = ev.target.getAttribute('data-k');
+    if (k === 'desde' || k === 'hasta' || k === 'u') filas[i][k] = ev.target.value;
+  });
+  $('tablaFilas').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button');
+    if (!b) return;
+    var fila = b.closest('.fila-tabla');
+    var i = Number(fila.getAttribute('data-i')), k = b.getAttribute('data-k');
+    if (k === 'signo') { filas[i].signo = -filas[i].signo; pintarSigno(b, filas[i].signo); }
+    if (k === 'quitar') { filas.splice(i, 1); pintarFilas(); }
+  });
+  $('anadirFila').addEventListener('click', function () {
+    var ult = filas[filas.length - 1];
+    var desde = '';
+    if (ult) { var h = L.leerNumero(ult.hasta); if (h !== null) desde = L.fmt(h + 1, 0); }
+    filas.push({ desde: desde, hasta: '', u: '', signo: 1 });
+    pintarFilas();
+    var todas = $('tablaFilas').querySelectorAll('.fila-tabla');
+    var nueva = todas[todas.length - 1];
+    if (nueva) nueva.querySelector(desde ? '[data-k="hasta"]' : '[data-k="desde"]').focus();
+  });
+
+  function leerFormulario() {
+    function num(txt) {
+      var t = String(txt === null || txt === undefined ? '' : txt).trim();
+      if (t === '') return null;
+      var v = L.leerNumero(t);
+      return v === null ? NaN : v;
+    }
+    function n(id) { return num($(id).value); }
+    var pasoV = valorRadio('paso');
+    var o = {
+      version: 1,
+      pauta: valorRadio('pauta'),
+      unidadHidratos: valorRadio('unidadHidratos'),
+      mismoRatio: $('mismoRatio').checked,
+      ratio: { todas: n('ratio-todas') },
+      sensibilidad: n('sensibilidad'),
+      objetivo: n('objetivo'),
+      dosisFija: {},
+      tabla: filas.map(function (f) {
+        var u = num(f.u);
+        if (typeof u === 'number' && isFinite(u)) u = (u < 0 || f.signo < 0) ? -Math.abs(u) : Math.abs(u);
+        return { desde: num(f.desde), hasta: num(f.hasta), u: u };
+      }),
+      paso: pasoV === '0.5' ? 0.5 : (pasoV === '1' ? 1 : null),
+      redondeo: valorRadio('redondeo'),
+      horasActiva: n('horasActiva'),
+      hipo: n('hipo'),
+      alta: n('alta'),
+      dosisMax: n('dosisMax')
+    };
+    L.COMIDAS.forEach(function (c) { o.ratio[c] = n('ratio-' + c); o.dosisFija[c] = n('fija-' + c); });
+    return o;
+  }
+  var CAMPO_A_CAJA = { pauta: 'fsPauta', unidadHidratos: 'fsHidratos', paso: 'fsBoli', redondeo: 'fsBoli' };
+  function marcarCampo(c) {
+    var m = /^tabla-(\d+)$/.exec(c);
+    if (m) {
+      var fila = $('tablaFilas').querySelector('[data-i="' + m[1] + '"]');
+      if (fila) fila.classList.add('invalida');
+      return;
+    }
+    var el = $(CAMPO_A_CAJA[c] || c);
+    if (el) el.classList.add('invalida');
+  }
+  function limpiarMarcas() {
+    var xs = document.querySelectorAll('#vistaAjustes .invalida');
+    for (var i = 0; i < xs.length; i++) xs[i].classList.remove('invalida');
+  }
+  function mostrarErrores(textos, titulo) {
+    var box = $('ajErrores');
+    box.textContent = '';
+    var b = document.createElement('b');
+    b.textContent = titulo || 'No se ha podido guardar:';
+    box.appendChild(b);
+    var ul = document.createElement('ul');
+    textos.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+    box.appendChild(ul);
+    box.hidden = false;
+    try { box.scrollIntoView({ block: 'center' }); } catch (e) {}
+  }
+  function avisarProblemas(problemas) {
+    mostrarErrores(problemas.map(function (p) { marcarCampo(p.campo); return p.texto; }), 'Falta algo por revisar:');
+  }
+
+  $('ajGuardar').addEventListener('click', function () {
+    var o = leerFormulario();
+    limpiarMarcas();
+    var problemas = L.validarAjustes(o);
+    if (problemas.length) { avisarProblemas(problemas); return; }
+    var limpia = L.limpiarPauta(o);
+    problemas = L.validarAjustes(limpia);
+    if (problemas.length) { avisarProblemas(problemas); return; }
+    $('ajErrores').hidden = true;
+    confirmar('¿Guardar estos datos?', L.resumen(limpia).concat(['Se guardan en este móvil.']), 'Sí, guardar', function () {
+      var ok = guardarPauta(limpia);
+      cerrar();
+      if (!ok) { aviso('Guardados hasta cerrar: este navegador no deja guardar.'); return; }
+      confirmar('Datos guardados', ['¿Quieres mandar estos números a otro móvil? Por ejemplo, por WhatsApp.'], 'Enviar a otro móvil', enviarPauta, { textoNo: 'No, gracias' });
+    });
+  });
+
+  $('btnAjustes').addEventListener('click', function () {
+    if (!aj) { abrirAjustes(); return; }
+    confirmar('Datos de la pauta', ['Son los números que dio el endocrino.', 'Cámbialos solo si él o tu educadora te lo indican.'], 'Ver o cambiar', abrirAjustes);
+  });
+  $('btnConfigurar').addEventListener('click', abrirAjustes);
+
+  /* ---------- Pasar la pauta a otro móvil con un enlace ---------- */
+  function enlaceDe(p) { return location.origin + location.pathname + '#pauta=' + L.codificarPauta(p); }
+  function enviarPauta() {
+    if (!valida(pauta)) return;
+    var url = enlaceDe(pauta);
+    if (navigator.share) {
+      var promesa;
+      try { promesa = navigator.share({ title: 'Mi insulina', text: 'Abre este enlace para poner los datos de la pauta en Mi insulina:', url: url }); }
+      catch (e) { mostrarEnlace(url, false); return; }
+      Promise.resolve(promesa).catch(function (e) {
+        if (e && e.name === 'AbortError') return;
+        mostrarEnlace(url, false);
+      });
+      return;
+    }
+    mostrarEnlace(url, false);
+  }
+  function mostrarEnlace(url, fallo) {
+    if (fallo) {
+      confirmar('Enlace con los datos', ['No se ha podido copiar solo. Mantén el dedo sobre el enlace, elige «Seleccionar todo» y luego «Copiar».'], 'Cerrar', null, { enlace: url, textoNo: null });
+      return;
+    }
+    confirmar('Enlace con los datos', ['Cópialo y mándalo por WhatsApp. Al abrirlo en el otro móvil, los datos se guardan allí.'], 'Copiar enlace', function () { copiar(url); }, { enlace: url, textoNo: 'Cerrar' });
+  }
+  function copiar(url) {
+    function bien() { aviso('Enlace copiado. Pégalo en WhatsApp.'); }
+    function mal() { if (copiarViejo(url)) bien(); else mostrarEnlace(url, true); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(url).then(bien, mal); return; }
+    } catch (e) {}
+    mal();
+  }
+  function copiarViejo(texto) {
+    var ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+  $('btnEnviar').addEventListener('click', enviarPauta);
+
+  // Al abrir un enlace con datos (#pauta=...), pregunta si se guardan en este móvil.
+  function revisarEnlace() {
+    var h = location.hash || '';
+    if (h.indexOf('#pauta=') !== 0) return;
+    var p = L.decodificarPauta(h.slice(7));
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    if (!p) {
+      confirmar('Este enlace no sirve', ['Está incompleto o dañado. Pide que te lo vuelvan a mandar.'], 'Entendido', null, { textoNo: null });
+      return;
+    }
+    var habia = valida(pauta);
+    if (habia && JSON.stringify(L.limpiarPauta(pauta)) === JSON.stringify(p)) { aviso('Este móvil ya tiene estos datos'); return; }
+    confirmar('Datos de la pauta recibidos', L.resumen(p).concat([habia ? 'Sustituyen a los datos que había en este móvil.' : 'Se guardarán en este móvil.']), 'Guardar en este móvil', function () {
+      var ok = guardarPauta(p);
+      irInicio();
+      aviso(ok ? 'Datos guardados' : 'Guardados hasta cerrar: este navegador no deja guardar.');
+    });
+  }
+  window.addEventListener('hashchange', revisarEnlace);
+
+  /* ---------- Confirmaciones y avisos flotantes ---------- */
+  var accionModal = null, focoPrevio = null;
+  function confirmar(titulo, lineas, textoSi, cb, op) {
+    op = op || {};
+    $('modalTitulo').textContent = titulo;
+    var t = $('modalTexto');
+    t.textContent = '';
+    lineas.forEach(function (x) { var p = document.createElement('p'); p.textContent = x; t.appendChild(p); });
+    var enl = $('modalEnlace');
+    enl.hidden = !op.enlace;
+    enl.value = op.enlace || '';
+    $('modalSi').textContent = textoSi;
+    $('modalNo').hidden = op.textoNo === null;
+    $('modalNo').textContent = op.textoNo || 'Cancelar';
+    accionModal = cb;
+    focoPrevio = document.activeElement;
+    $('modal').hidden = false;
+    try { $('modalSi').focus(); } catch (e) {}
+  }
+  function cerrarModal(devolverFoco) {
+    if ($('modal').hidden) return;
+    $('modal').hidden = true;
+    accionModal = null;
+    if (devolverFoco) { try { if (focoPrevio && focoPrevio.focus) focoPrevio.focus(); } catch (e) {} }
+  }
+  $('modalSi').addEventListener('click', function () { var cb = accionModal; cerrarModal(false); if (cb) cb(); });
+  $('modalNo').addEventListener('click', function () { cerrarModal(true); });
+  $('modal').addEventListener('click', function (ev) { if (ev.target === $('modal')) cerrarModal(true); });
+  $('modalEnlace').addEventListener('focus', function () { try { this.select(); } catch (e) {} });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') cerrarModal(true); });
+
+  var tAviso = null;
+  function aviso(txt) {
+    var t = $('toast');
+    t.textContent = txt;
+    t.classList.add('visible');
+    clearTimeout(tAviso);
+    tAviso = setTimeout(function () { t.classList.remove('visible'); }, 2800);
+  }
+
+  // Al volver a la app después de un rato, se actualizan la comida y la última dosis.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible' || !aj || $('vistaCalcular').hidden) return;
+    if ($('glucosa').value.trim() === '' && $('hidratos').value.trim() === '') {
+      estado.comida = null;
+      estado.reciente = null;
+      prepararCalculo();
+    }
+  });
+
+  /* ---------- Funcionar sin internet ---------- */
+  function registrarSW() {
+    if (!('serviceWorker' in navigator)) return;
+    var local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (location.protocol !== 'https:' && !local) return;
+    try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}
+  }
+
+  window.MiInsulina = { Logica: L, version: VERSION };
+  irInicio();
+  revisarEnlace();
+  registrarSW();
+})();
+</script>
+</body>
+</html>
